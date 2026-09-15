@@ -13,6 +13,7 @@ services:
       AWS_DEFAULT_REGION: "${AWS_REGION:-us-east-1}"
       LOCALSTACK_AUTH_TOKEN: "${LOCALSTACK_AUTH_TOKEN:?Set LOCALSTACK_AUTH_TOKEN}"
       DOCKER_HOST: unix:///var/run/docker.sock
+      DOCKER_SOCK: "${DOCKER_SOCK:?Set DOCKER_SOCK to the container-engine socket}"
     volumes:
       - "${DOCKER_SOCK}:/var/run/docker.sock:Z"
     networks:

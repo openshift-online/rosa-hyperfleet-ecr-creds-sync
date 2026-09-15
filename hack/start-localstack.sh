@@ -17,6 +17,7 @@ fi
 
 if [[ "${ENGINE_NAME}" == "podman" ]]; then
   systemctl --user enable --now podman.socket 2>/dev/null || true
+  export DOCKER_SOCK="${DOCKER_SOCK:-${XDG_RUNTIME_DIR}/podman/podman.sock}"
 fi
 
 if [[ -z "${LOCALSTACK_AUTH_TOKEN:-}" ]]; then
