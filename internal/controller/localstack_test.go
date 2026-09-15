@@ -15,7 +15,10 @@ func TestLocalStackECRAuthorization(t *testing.T) {
 		t.Skip("set LOCALSTACK_INTEGRATION=1 to run against LocalStack")
 	}
 
-	endpoint := os.Getenv("AWS_ENDPOINT_URL")
+	endpoint := os.Getenv("LOCALSTACK_ENDPOINT")
+	if endpoint == "" {
+		endpoint = os.Getenv("AWS_ENDPOINT_URL")
+	}
 	if endpoint == "" {
 		endpoint = "http://localhost:4566"
 	}

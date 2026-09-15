@@ -1,19 +1,24 @@
-.PHONY: localstack-up localstack-down localstack-logs localstack-test test build
+.PHONY: localstack localstack-up localstack-down localstack-logs localstack-test test build
+
+localstack: localstack-up
 
 localstack-up:
-	docker compose -f docker-compose.localstack.yaml up -d
+	LOCALSTACK_PORT=$(LOCALSTACK_PORT) CONTAINER_ENGINE=$(CONTAINER_ENGINE) ./hack/start-localstack.sh
 
 localstack-down:
-	docker compose -f docker-compose.localstack.yaml down
+	$(CONTAINER_ENGINE) rm -f ecr-creds-sync-localstack 2>/dev/null || true
 
 localstack-logs:
-	docker compose -f docker-compose.localstack.yaml logs -f localstack
+	$(CONTAINER_ENGINE) logs -f ecr-creds-sync-localstack
 
 localstack-test: localstack-up
-	LOCALSTACK_INTEGRATION=1 go test ./internal/controller -run LocalStack
+	LOCALSTACK_INTEGRATION=1 LOCALSTACK_ENDPOINT=http://127.0.0.1:$(LOCALSTACK_PORT) go test ./internal/controller -run LocalStack
 
 test:
 	go test ./...
 
 build:
 	go build ./cmd/ecr-creds-sync
+
+LOCALSTACK_PORT ?= 4566
+CONTAINER_ENGINE ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
