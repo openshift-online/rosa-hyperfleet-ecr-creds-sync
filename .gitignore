@@ -1,0 +1,24 @@
+# Binaries and coverage
+/bin/
+/ecr-creds-sync
+*.test
+*.out
+coverage.html
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+
+# Go tooling
+vendor/
+
+# Editors and operating-system files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local build context and generated files
+*.log
+dist/

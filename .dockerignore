@@ -1,0 +1,7 @@
+.git
+.gitignore
+.dockerignore
+*.log
+bin/
+dist/
+vendor/

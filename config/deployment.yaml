@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecr-creds-sync
+  namespace: hypershift
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ecr-creds-sync
+  template:
+    metadata:
+      labels:
+        app: ecr-creds-sync
+    spec:
+      serviceAccountName: ecr-creds-sync
+      containers:
+      - name: controller
+        image: quay.io/openshift-online/ecr-creds-sync:latest
+        args:
+        - --ecr-repository=$(ECR_REPOSITORY)
+        env:
+        - name: ECR_REPOSITORY
+          value: 123456789012.dkr.ecr.us-east-1.amazonaws.com/rosa/release
+        - name: AWS_REGION
+          value: us-east-1
+        ports:
+        - name: health
+          containerPort: 8081
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: health
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: health
