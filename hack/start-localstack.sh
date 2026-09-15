@@ -33,9 +33,16 @@ wait_healthy() {
   echo "LocalStack is healthy."
 }
 
+seed_ecr() {
+  "${CONTAINER_ENGINE}" exec "${CONTAINER_NAME}" awslocal ecr create-repository \
+    --repository-name rosa/release >/dev/null 2>&1 || true
+  echo "LocalStack ECR repository ready: rosa/release"
+}
+
 if "${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{.State.Status}}' 2>/dev/null | grep -q '^running$'; then
   echo "LocalStack container '${CONTAINER_NAME}' already running on port ${PORT}."
   wait_healthy
+  seed_ecr
   exit 0
 fi
 
@@ -52,5 +59,6 @@ echo "Starting ${IMAGE} on 127.0.0.1:${PORT} ..."
   "${IMAGE}"
 
 wait_healthy
+seed_ecr
 echo "LocalStack ready on http://127.0.0.1:${PORT}."
 echo "Stop with: ${CONTAINER_ENGINE} rm -f ${CONTAINER_NAME}"
