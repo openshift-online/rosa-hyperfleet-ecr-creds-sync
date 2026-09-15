@@ -65,12 +65,10 @@ echo "Building controller image: ${IMAGE}"
 "${CONTAINER_ENGINE}" build -t "${IMAGE}" "${ROOT_DIR}"
 
 CLUSTER_TRUST='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"eks.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
-NODE_TRUST='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
 POD_TRUST='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"pods.eks.amazonaws.com"},"Action":["sts:AssumeRole","sts:TagSession"]}]}'
 ECR_POLICY='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"ecr:GetAuthorizationToken","Resource":"*"}]}'
 
 role ecr-creds-sync-eks-role "${CLUSTER_TRUST}"
-role ecr-creds-sync-node-role "${NODE_TRUST}"
 role ecr-creds-sync-pod-role "${POD_TRUST}"
 echo "Configuring ECR policy"
 aws_local iam put-role-policy --role-name ecr-creds-sync-pod-role --policy-name ecr-auth --policy-document "${ECR_POLICY}"
@@ -87,22 +85,11 @@ if ! aws_local eks describe-cluster --name "${CLUSTER_NAME}" >/dev/null 2>&1; th
   echo "Creating EKS cluster: ${CLUSTER_NAME}"
   aws_local eks create-cluster --name "${CLUSTER_NAME}" \
     --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/ecr-creds-sync-eks-role" \
-    --resources-vpc-config "{\"subnetIds\":[\"${SUBNET_A}\",\"${SUBNET_B}\"]}" >/dev/null
+    --resources-vpc-config "{\"subnetIds\":[\"${SUBNET_A}\"]}" >/dev/null
 fi
 echo "Waiting for EKS cluster: ${CLUSTER_NAME}"
 if ! aws_local eks wait cluster-active --name "${CLUSTER_NAME}"; then
   diagnose_eks_failure "EKS cluster did not become ACTIVE"
-fi
-
-if ! aws_local eks describe-nodegroup --cluster-name "${CLUSTER_NAME}" --nodegroup-name workers >/dev/null 2>&1; then
-  echo "Creating EKS node group: workers"
-  aws_local eks create-nodegroup --cluster-name "${CLUSTER_NAME}" --nodegroup-name workers \
-    --node-role "arn:aws:iam::${ACCOUNT_ID}:role/ecr-creds-sync-node-role" \
-    --subnets "${SUBNET_A}" "${SUBNET_B}" --scaling-config desiredSize=1 >/dev/null
-fi
-echo "Waiting for EKS node group: workers"
-if ! aws_local eks wait nodegroup-active --cluster-name "${CLUSTER_NAME}" --nodegroup-name workers; then
-  diagnose_eks_failure "EKS node group did not become ACTIVE"
 fi
 
 echo "Creating EKS Pod Identity association"

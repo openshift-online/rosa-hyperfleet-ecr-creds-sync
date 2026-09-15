@@ -14,6 +14,10 @@ spec:
         app: ecr-creds-sync
     spec:
       serviceAccountName: ecr-creds-sync
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
       containers:
       - name: controller
         image: quay.io/openshift-online/ecr-creds-sync:latest

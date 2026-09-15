@@ -35,7 +35,7 @@ go run ./cmd/ecr-creds-sync
 
 Run the lightweight LocalStack ECR API smoke test with `make localstack-ecr-test`. It is skipped during the normal test suite unless `LOCALSTACK_INTEGRATION=1` is set. Override the port with `LOCALSTACK_PORT`; use `CONTAINER_ENGINE=podman` when Docker is not the preferred engine.
 
-For the full EKS Pod Identity path, set `HYPERSHIFT_DIR` to the HyperShift checkout and run `make localstack-test`. This creates an embedded LocalStack EKS cluster and worker node group, creates the Pod Identity IAM association, builds and pushes this image to LocalStack ECR, deploys it, installs the HostedCluster CRD, and creates a test HostedCluster. It passes when `clusters/ecr-test` receives `ecr-pull-secret`. `make e2e-localstack-eks` remains an explicit alias for the same flow.
+For the full EKS Pod Identity path, set `HYPERSHIFT_DIR` to the HyperShift checkout and run `make localstack-test`. This creates an embedded LocalStack EKS cluster, creates the Pod Identity IAM association, builds and pushes this image to LocalStack ECR, deploys it on the embedded control-plane node, installs the HostedCluster CRD, and creates a test HostedCluster. It avoids managed node groups because LocalStack documents those as not fully supported. It passes when `clusters/ecr-test` receives `ecr-pull-secret`. `make e2e-localstack-eks` remains an explicit alias for the same flow.
 
 For every `HostedCluster`, it reads `spec.pullSecret.name` and writes a Kubernetes `kubernetes.io/dockerconfigjson` Secret with that name in the HostedCluster namespace. It does not modify the HostedCluster spec. HyperShift already copies that Secret to the HCP namespace as `pull-secret`, where the existing ignition and HCP consumers use it.
 

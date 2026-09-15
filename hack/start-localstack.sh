@@ -94,7 +94,6 @@ echo "Starting ${IMAGE} on 127.0.0.1:${PORT} ..."
   --privileged \
   -e "SERVICES=${SERVICES}" \
   -e "AWS_DEFAULT_REGION=${AWS_REGION:-us-east-1}" \
-  -e "LOCALSTACK_HOST=localhost.localstack.cloud" \
   -e "DEBUG=${LOCALSTACK_DEBUG:-0}" \
   "${AUTH_ARGS[@]}" \
   "${IMAGE}"
