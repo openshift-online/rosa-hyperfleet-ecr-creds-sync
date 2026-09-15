@@ -1,4 +1,4 @@
-.PHONY: localstack localstack-up localstack-down localstack-logs localstack-test e2e-localstack-eks test build
+.PHONY: localstack localstack-up localstack-down localstack-logs localstack-ecr-test localstack-test e2e-localstack-eks test build
 
 localstack: localstack-up
 
@@ -11,8 +11,10 @@ localstack-down:
 localstack-logs:
 	$(CONTAINER_ENGINE) logs -f ecr-creds-sync-localstack
 
-localstack-test: localstack-up
+localstack-ecr-test: localstack-up
 	LOCALSTACK_INTEGRATION=1 LOCALSTACK_ENDPOINT=http://127.0.0.1:$(LOCALSTACK_PORT) go test ./internal/controller -run LocalStack
+
+localstack-test: e2e-localstack-eks
 
 e2e-localstack-eks:
 	./hack/e2e-localstack-eks.sh
