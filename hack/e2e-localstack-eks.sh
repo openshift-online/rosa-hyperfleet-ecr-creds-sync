@@ -17,6 +17,7 @@ REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.localhost.localstack.cloud:4566"
 IMAGE="${REGISTRY}/ecr-creds-sync:${IMAGE_TAG}"
 HYPERSHIFT_DIR="${HYPERSHIFT_DIR:-${ROOT_DIR}/../hypershift}"
 CONTAINER_ENGINE="${CONTAINER_ENGINE:-$(command -v podman 2>/dev/null || command -v docker 2>/dev/null)}"
+AWS_TIMEOUT="${AWS_TIMEOUT:-120}"
 
 if [[ -z "${CONTAINER_ENGINE}" ]]; then
   echo "ERROR: podman or docker is required" >&2
@@ -29,16 +30,17 @@ fi
 
 aws_local() {
   if command -v lstk >/dev/null 2>&1; then
-    lstk aws "$@"
+    timeout "${AWS_TIMEOUT}" lstk aws "$@"
   elif command -v awslocal >/dev/null 2>&1; then
-    awslocal "$@"
+    timeout "${AWS_TIMEOUT}" awslocal "$@"
   else
-    aws --endpoint-url "${LOCALSTACK_ENDPOINT}" "$@"
+    timeout "${AWS_TIMEOUT}" aws --endpoint-url "${LOCALSTACK_ENDPOINT}" "$@"
   fi
 }
 
 role() {
   local name="$1" trust="$2"
+  echo "Ensuring IAM role: ${name}"
   aws_local iam get-role --role-name "${name}" >/dev/null 2>&1 || \
     aws_local iam create-role --role-name "${name}" --assume-role-policy-document "${trust}" >/dev/null
 }
@@ -54,8 +56,10 @@ ECR_POLICY='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"ecr
 role ecr-creds-sync-eks-role "${CLUSTER_TRUST}"
 role ecr-creds-sync-node-role "${NODE_TRUST}"
 role ecr-creds-sync-pod-role "${POD_TRUST}"
+echo "Configuring ECR policy"
 aws_local iam put-role-policy --role-name ecr-creds-sync-pod-role --policy-name ecr-auth --policy-document "${ECR_POLICY}"
 
+echo "Creating VPC and subnets"
 VPC_ID="$(aws_local ec2 create-vpc --cidr-block 10.42.0.0/16 --query 'Vpc.VpcId' --output text 2>/dev/null || true)"
 if [[ -z "${VPC_ID}" || "${VPC_ID}" == "None" ]]; then
   VPC_ID="$(aws_local ec2 describe-vpcs --query 'Vpcs[0].VpcId' --output text)"
@@ -64,32 +68,40 @@ SUBNET_A="$(aws_local ec2 create-subnet --vpc-id "${VPC_ID}" --cidr-block 10.42.
 SUBNET_B="$(aws_local ec2 create-subnet --vpc-id "${VPC_ID}" --cidr-block 10.42.2.0/24 --availability-zone "${AWS_REGION}b" --query 'Subnet.SubnetId' --output text)"
 
 if ! aws_local eks describe-cluster --name "${CLUSTER_NAME}" >/dev/null 2>&1; then
+  echo "Creating EKS cluster: ${CLUSTER_NAME}"
   aws_local eks create-cluster --name "${CLUSTER_NAME}" \
     --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/ecr-creds-sync-eks-role" \
     --resources-vpc-config "{\"subnetIds\":[\"${SUBNET_A}\",\"${SUBNET_B}\"]}" >/dev/null
 fi
+echo "Waiting for EKS cluster: ${CLUSTER_NAME}"
 aws_local eks wait cluster-active --name "${CLUSTER_NAME}"
 
 if ! aws_local eks describe-nodegroup --cluster-name "${CLUSTER_NAME}" --nodegroup-name workers >/dev/null 2>&1; then
+  echo "Creating EKS node group: workers"
   aws_local eks create-nodegroup --cluster-name "${CLUSTER_NAME}" --nodegroup-name workers \
     --node-role "arn:aws:iam::${ACCOUNT_ID}:role/ecr-creds-sync-node-role" \
     --subnets "${SUBNET_A}" "${SUBNET_B}" --scaling-config desiredSize=1 >/dev/null
 fi
+echo "Waiting for EKS node group: workers"
 aws_local eks wait nodegroup-active --cluster-name "${CLUSTER_NAME}" --nodegroup-name workers
 
+echo "Creating EKS Pod Identity association"
 aws_local eks create-pod-identity-association --cluster-name "${CLUSTER_NAME}" \
   --namespace hypershift --service-account ecr-creds-sync \
   --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/ecr-creds-sync-pod-role" >/dev/null 2>&1 || true
 
 export KUBECONFIG
+echo "Updating kubeconfig: ${KUBECONFIG}"
 if command -v lstk >/dev/null 2>&1; then
   lstk aws eks update-kubeconfig --name "${CLUSTER_NAME}" >/dev/null
 else
   aws_local eks update-kubeconfig --name "${CLUSTER_NAME}" >/dev/null
 fi
 
+echo "Building controller image: ${IMAGE}"
 aws_local ecr create-repository --repository-name ecr-creds-sync >/dev/null 2>&1 || true
 "${CONTAINER_ENGINE}" build -t "${IMAGE}" "${ROOT_DIR}"
+echo "Pushing controller image to LocalStack ECR"
 aws_local ecr get-login-password | "${CONTAINER_ENGINE}" login --username AWS --password-stdin "${REGISTRY}"
 "${CONTAINER_ENGINE}" push "${IMAGE}"
 
