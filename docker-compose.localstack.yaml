@@ -1,0 +1,23 @@
+services:
+  localstack:
+    image: localstack/localstack-pro:latest
+    container_name: ecr-creds-sync-localstack
+    user: "0"
+    privileged: true
+    ports:
+      - "127.0.0.1:4566:4566"
+      - "127.0.0.1:4510-4559:4510-4559"
+    environment:
+      SERVICES: ecr,ec2,eks,eks-auth,iam,sts
+      DEBUG: "${LOCALSTACK_DEBUG:-0}"
+      AWS_DEFAULT_REGION: "${AWS_REGION:-us-east-1}"
+      LOCALSTACK_AUTH_TOKEN: "${LOCALSTACK_AUTH_TOKEN:?Set LOCALSTACK_AUTH_TOKEN}"
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      - "${DOCKER_SOCK}:/var/run/docker.sock:Z"
+    networks:
+      - localstack-net
+
+networks:
+  localstack-net:
+    name: ecr-creds-sync-localstack-net

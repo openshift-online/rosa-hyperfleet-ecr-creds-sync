@@ -23,7 +23,7 @@ if [[ -z "${LOCALSTACK_AUTH_TOKEN:-}" ]]; then
   echo "ERROR: LOCALSTACK_AUTH_TOKEN is required for LocalStack 2026.08.0" >&2
   exit 1
 fi
-IMAGE="localstack/localstack:2026.08.0"
+IMAGE="localstack/localstack-pro:latest"
 AUTH_ARGS=(-e "LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN}")
 
 SOCKET_ARGS=(
@@ -65,6 +65,23 @@ seed_ecr() {
     --repository-name rosa/release >/dev/null 2>&1 || true
   echo "LocalStack ECR repository ready: rosa/release"
 }
+
+COMPOSE_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/docker-compose.localstack.yaml"
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+  if [[ "${ENGINE_NAME}" == "podman" ]]; then
+    export DOCKER_SOCK="${PODMAN_SOCKET}"
+  else
+    export DOCKER_SOCK="${DOCKER_SOCK:-/var/run/docker.sock}"
+  fi
+  "${CONTAINER_ENGINE}" rm -f "${CONTAINER_NAME}" 2>/dev/null || true
+  echo "Starting ${IMAGE} with Docker Compose compatibility on 127.0.0.1:${PORT} ..."
+  docker compose -f "${COMPOSE_FILE}" up -d
+  wait_healthy
+  seed_ecr
+  echo "LocalStack ready on http://127.0.0.1:${PORT}."
+  echo "Stop with: ${CONTAINER_ENGINE} rm -f ${CONTAINER_NAME}"
+  exit 0
+fi
 
 if "${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{.State.Status}}' 2>/dev/null | grep -q '^running$'; then
   CURRENT_SERVICES="$("${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{index .Config.Labels "ecr-creds-sync.services"}}' 2>/dev/null || true)"
