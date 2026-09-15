@@ -35,11 +35,13 @@ func TestLocalStackECRAuthorization(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output, err := ecr.NewFromConfig(awsConfig).GetAuthorizationToken(context.Background(), &ecr.GetAuthorizationTokenInput{})
+	output, err := ecr.NewFromConfig(awsConfig).GetAuthorizationToken(context.Background(), &ecr.GetAuthorizationTokenInput{
+		RegistryIds: []string{"000000000000"},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(output.AuthorizationData) == 0 || output.AuthorizationData[0].AuthorizationToken == nil {
-		t.Fatal("LocalStack returned no ECR authorization token")
+		t.Fatalf("LocalStack returned no ECR authorization token: %#v", output)
 	}
 }
