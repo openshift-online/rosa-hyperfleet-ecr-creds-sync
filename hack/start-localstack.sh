@@ -39,7 +39,6 @@ if [[ "${ENGINE_NAME}" == "podman" ]]; then
   fi
   SOCKET_ARGS=(
     -v "${PODMAN_SOCKET}:/var/run/docker.sock:Z"
-    -e "DOCKER_CMD=podman"
     -e "DOCKER_HOST=unix:///var/run/docker.sock"
     -e "DOCKER_SOCK=/var/run/docker.sock"
   )

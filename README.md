@@ -17,7 +17,7 @@ make localstack
 
 This uses the same idempotent container pattern as the HyperFleet kube-applier development tooling. It runs `localstack/localstack:2026.08.0`, enables ECR, EKS, EKS Auth, IAM, and STS, and waits for the health endpoint. The LocalStack EKS provider and credential webhook can then be used for a Pod Identity development cluster according to the [LocalStack EKS documentation](https://docs.localstack.cloud/aws/services/eks/). This is preferable to pretending a kind node has EKS Pod Identity.
 
-For rootless Podman, the launcher starts the user socket, sets `DOCKER_CMD=podman`, maps `${XDG_RUNTIME_DIR}/podman/podman.sock` into LocalStack as `/var/run/docker.sock`, and uses the `podman` network. This follows LocalStack's embedded-EKS requirements:
+For rootless Podman, the launcher starts the user socket, maps `${XDG_RUNTIME_DIR}/podman/podman.sock` into LocalStack as `/var/run/docker.sock`, and uses the `DOCKER_HOST`/`DOCKER_SOCK` Docker-API settings. The LocalStack image does not contain a Podman or Docker CLI, so `DOCKER_CMD` is intentionally not set:
 
 ```bash
 systemctl --user start podman.socket
