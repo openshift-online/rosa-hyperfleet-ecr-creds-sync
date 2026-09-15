@@ -7,6 +7,7 @@ PORT="${LOCALSTACK_PORT:-4566}"
 HEALTH_URL="http://127.0.0.1:${PORT}/_localstack/health"
 HEALTH_TIMEOUT="${LOCALSTACK_HEALTH_TIMEOUT:-60}"
 ENGINE_NAME="$(basename "${CONTAINER_ENGINE}")"
+SERVICES="ecr,ec2,eks,eks-auth,iam,sts"
 
 if [[ -z "${CONTAINER_ENGINE}" ]]; then
   echo "ERROR: podman or docker is required" >&2
@@ -61,10 +62,14 @@ seed_ecr() {
 }
 
 if "${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{.State.Status}}' 2>/dev/null | grep -q '^running$'; then
-  echo "LocalStack container '${CONTAINER_NAME}' already running on port ${PORT}."
-  wait_healthy
-  seed_ecr
-  exit 0
+  CURRENT_SERVICES="$("${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{index .Config.Labels "ecr-creds-sync.services"}}' 2>/dev/null || true)"
+  if [[ "${CURRENT_SERVICES}" == "${SERVICES}" ]]; then
+    echo "LocalStack container '${CONTAINER_NAME}' already running on port ${PORT}."
+    wait_healthy
+    seed_ecr
+    exit 0
+  fi
+  echo "Recreating LocalStack container to enable services: ${SERVICES}"
 fi
 
 "${CONTAINER_ENGINE}" rm -f "${CONTAINER_NAME}" 2>/dev/null || true
@@ -72,12 +77,13 @@ fi
 echo "Starting ${IMAGE} on 127.0.0.1:${PORT} ..."
 "${CONTAINER_ENGINE}" run -d \
   --name "${CONTAINER_NAME}" \
+  --label "ecr-creds-sync.services=${SERVICES}" \
   -p "127.0.0.1:${PORT}:4566" \
   "${SOCKET_ARGS[@]}" \
   "${NETWORK_ARGS[@]}" \
   --user 0 \
   --privileged \
-  -e "SERVICES=ecr,eks,eks-auth,iam,sts" \
+  -e "SERVICES=${SERVICES}" \
   -e "AWS_DEFAULT_REGION=${AWS_REGION:-us-east-1}" \
   -e "LOCALSTACK_HOST=localhost.localstack.cloud" \
   -e "DEBUG=${LOCALSTACK_DEBUG:-0}" \
