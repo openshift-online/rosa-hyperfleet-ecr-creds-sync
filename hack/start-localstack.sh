@@ -8,6 +8,7 @@ HEALTH_URL="http://127.0.0.1:${PORT}/_localstack/health"
 HEALTH_TIMEOUT="${LOCALSTACK_HEALTH_TIMEOUT:-60}"
 ENGINE_NAME="$(basename "${CONTAINER_ENGINE}")"
 SERVICES="ecr,ec2,eks,eks-auth,iam,sts"
+CONFIG_VERSION="2"
 
 if [[ -z "${CONTAINER_ENGINE}" ]]; then
   echo "ERROR: podman or docker is required" >&2
@@ -68,7 +69,8 @@ seed_ecr() {
 if "${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{.State.Status}}' 2>/dev/null | grep -q '^running$'; then
   CURRENT_SERVICES="$("${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{index .Config.Labels "ecr-creds-sync.services"}}' 2>/dev/null || true)"
   CURRENT_RUNTIME="$("${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{index .Config.Labels "ecr-creds-sync.runtime"}}' 2>/dev/null || true)"
-  if [[ "${CURRENT_SERVICES}" == "${SERVICES}" && "${CURRENT_RUNTIME}" == "${ENGINE_NAME}" ]]; then
+  CURRENT_CONFIG="$("${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{index .Config.Labels "ecr-creds-sync.config"}}' 2>/dev/null || true)"
+  if [[ "${CURRENT_SERVICES}" == "${SERVICES}" && "${CURRENT_RUNTIME}" == "${ENGINE_NAME}" && "${CURRENT_CONFIG}" == "${CONFIG_VERSION}" ]]; then
     echo "LocalStack container '${CONTAINER_NAME}' already running on port ${PORT}."
     wait_healthy
     seed_ecr
@@ -84,6 +86,7 @@ echo "Starting ${IMAGE} on 127.0.0.1:${PORT} ..."
   --name "${CONTAINER_NAME}" \
   --label "ecr-creds-sync.services=${SERVICES}" \
   --label "ecr-creds-sync.runtime=${ENGINE_NAME}" \
+  --label "ecr-creds-sync.config=${CONFIG_VERSION}" \
   -p "127.0.0.1:${PORT}:4566" \
   "${SOCKET_ARGS[@]}" \
   "${NETWORK_ARGS[@]}" \
