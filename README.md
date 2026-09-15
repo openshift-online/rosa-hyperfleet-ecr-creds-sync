@@ -8,14 +8,14 @@ Run `go test ./...` and `go build ./cmd/ecr-creds-sync`.
 
 ### LocalStack development
 
-LocalStack for AWS 4.10 added EKS Pod Identity and EKS Auth emulation. With an Ultimate account, set `LOCALSTACK_AUTH_TOKEN` and start the development services:
+LocalStack for AWS 4.10 introduced EKS Pod Identity and EKS Auth emulation. The current release is `2026.08.0`, which retains those capabilities. With an Ultimate account, set `LOCALSTACK_AUTH_TOKEN` and start the development services:
 
 ```bash
 export LOCALSTACK_AUTH_TOKEN=...
 make localstack
 ```
 
-This uses the same idempotent container pattern as the HyperFleet kube-applier development tooling. It selects `localstack/localstack-pro:4.10.0` when the token is present, enables ECR, EKS, EKS Auth, IAM, and STS, and waits for the health endpoint. The LocalStack EKS provider and credential webhook can then be used for a Pod Identity development cluster according to the [LocalStack EKS documentation](https://docs.localstack.cloud/aws/services/eks/). This is preferable to pretending a kind node has EKS Pod Identity.
+This uses the same idempotent container pattern as the HyperFleet kube-applier development tooling. It runs `localstack/localstack:2026.08.0`, enables ECR, EKS, EKS Auth, IAM, and STS, and waits for the health endpoint. The LocalStack EKS provider and credential webhook can then be used for a Pod Identity development cluster according to the [LocalStack EKS documentation](https://docs.localstack.cloud/aws/services/eks/). This is preferable to pretending a kind node has EKS Pod Identity.
 
 For a controller process running outside the emulated cluster, point the AWS SDK at LocalStack explicitly:
 

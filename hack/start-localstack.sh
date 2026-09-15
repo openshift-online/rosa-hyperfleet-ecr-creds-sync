@@ -12,13 +12,12 @@ if [[ -z "${CONTAINER_ENGINE}" ]]; then
   exit 1
 fi
 
-if [[ -n "${LOCALSTACK_AUTH_TOKEN:-}" ]]; then
-  IMAGE="localstack/localstack-pro:4.10.0"
-  AUTH_ARGS=(-e "LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN}")
-else
-  IMAGE="localstack/localstack:4.10.0"
-  AUTH_ARGS=()
+if [[ -z "${LOCALSTACK_AUTH_TOKEN:-}" ]]; then
+  echo "ERROR: LOCALSTACK_AUTH_TOKEN is required for LocalStack 2026.08.0" >&2
+  exit 1
 fi
+IMAGE="localstack/localstack:2026.08.0"
+AUTH_ARGS=(-e "LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN}")
 
 wait_healthy() {
   echo "Waiting for LocalStack at ${HEALTH_URL} ..."
