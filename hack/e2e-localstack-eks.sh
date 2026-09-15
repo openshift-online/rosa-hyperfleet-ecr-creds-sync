@@ -5,6 +5,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export LOCALSTACK_ENDPOINT="${LOCALSTACK_ENDPOINT:-http://127.0.0.1:4566}"
 export KUBECONFIG="${KUBECONFIG:-${ROOT_DIR}/.local/ecr-creds-sync.kubeconfig}"
+# LocalStack accepts these conventional dummy credentials. Keep the E2E path
+# independent from any real AWS profile and prevent metadata lookups.
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-test}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-test}"
+export AWS_EC2_METADATA_DISABLED="true"
 CLUSTER_NAME="${EKS_CLUSTER_NAME:-ecr-creds-sync}"
 IMAGE_TAG="${IMAGE_TAG:-dev}"
 ACCOUNT_ID="000000000000"
