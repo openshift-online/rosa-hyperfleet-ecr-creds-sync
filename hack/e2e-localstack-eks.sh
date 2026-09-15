@@ -48,6 +48,9 @@ role() {
 mkdir -p "$(dirname "${KUBECONFIG}")"
 "${ROOT_DIR}/hack/start-localstack.sh"
 
+echo "Building controller image: ${IMAGE}"
+"${CONTAINER_ENGINE}" build -t "${IMAGE}" "${ROOT_DIR}"
+
 CLUSTER_TRUST='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"eks.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
 NODE_TRUST='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ec2.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
 POD_TRUST='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"pods.eks.amazonaws.com"},"Action":["sts:AssumeRole","sts:TagSession"]}]}'
@@ -98,9 +101,7 @@ else
   aws_local eks update-kubeconfig --name "${CLUSTER_NAME}" >/dev/null
 fi
 
-echo "Building controller image: ${IMAGE}"
 aws_local ecr create-repository --repository-name ecr-creds-sync >/dev/null 2>&1 || true
-"${CONTAINER_ENGINE}" build -t "${IMAGE}" "${ROOT_DIR}"
 echo "Pushing controller image to LocalStack ECR"
 aws_local ecr get-login-password | "${CONTAINER_ENGINE}" login --username AWS --password-stdin "${REGISTRY}"
 "${CONTAINER_ENGINE}" push "${IMAGE}"
