@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
@@ -35,7 +36,11 @@ func TestLocalStackECRAuthorization(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output, err := ecr.NewFromConfig(awsConfig).GetAuthorizationToken(context.Background(), &ecr.GetAuthorizationTokenInput{
+	ecrClient := ecr.NewFromConfig(awsConfig)
+	_, _ = ecrClient.CreateRepository(context.Background(), &ecr.CreateRepositoryInput{
+		RepositoryName: aws.String("rosa/release"),
+	})
+	output, err := ecrClient.GetAuthorizationToken(context.Background(), &ecr.GetAuthorizationTokenInput{
 		RegistryIds: []string{"000000000000"},
 	})
 	if err != nil {
