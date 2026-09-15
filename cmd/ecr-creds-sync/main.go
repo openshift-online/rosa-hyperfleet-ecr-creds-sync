@@ -19,9 +19,10 @@ import (
 )
 
 func main() {
-	var repository, region string
+	var repository, region, endpoint string
 	flag.StringVar(&repository, "ecr-repository", os.Getenv("ECR_REPOSITORY"), "ECR repository URI, for example 123456789012.dkr.ecr.us-east-1.amazonaws.com/rosa/release")
 	flag.StringVar(&region, "aws-region", os.Getenv("AWS_REGION"), "AWS region; when empty, use the AWS SDK region configuration")
+	flag.StringVar(&endpoint, "aws-endpoint-url", os.Getenv("AWS_ENDPOINT_URL"), "optional AWS endpoint override for local emulators such as LocalStack")
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: false})))
@@ -34,6 +35,9 @@ func main() {
 	loadOptions := []func(*config.LoadOptions) error{}
 	if region != "" {
 		loadOptions = append(loadOptions, config.WithRegion(region))
+	}
+	if endpoint != "" {
+		loadOptions = append(loadOptions, config.WithBaseEndpoint(endpoint))
 	}
 	awsConfig, err := config.LoadDefaultConfig(ctx, loadOptions...)
 	if err != nil {

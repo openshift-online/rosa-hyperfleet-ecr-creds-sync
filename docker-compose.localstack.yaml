@@ -1,0 +1,14 @@
+services:
+  localstack:
+    image: localstack/localstack:4.10.0
+    container_name: ecr-creds-sync-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: ecr,eks,eks-auth,iam,sts
+      AWS_DEFAULT_REGION: us-east-1
+      DEBUG: "1"
+      LOCALSTACK_AUTH_TOKEN: ${LOCALSTACK_AUTH_TOKEN:?Set LOCALSTACK_AUTH_TOKEN for the Ultimate EKS provider}
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./localstack/init:/etc/localstack/init/ready.d"
