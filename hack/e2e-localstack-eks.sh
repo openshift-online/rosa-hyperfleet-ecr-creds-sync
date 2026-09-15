@@ -38,6 +38,18 @@ aws_local() {
   fi
 }
 
+diagnose_eks_failure() {
+  local message="$1"
+  echo "ERROR: ${message}" >&2
+  echo "EKS cluster status:" >&2
+  aws_local eks describe-cluster --name "${CLUSTER_NAME}" 2>&1 || true
+  echo "LocalStack logs:" >&2
+  "${CONTAINER_ENGINE}" logs --tail=120 "${CONTAINER_NAME}" 2>&1 || true
+  echo "LocalStack child containers:" >&2
+  "${CONTAINER_ENGINE}" ps -a --format '{{.Names}}\t{{.Status}}' 2>&1 || true
+  exit 1
+}
+
 role() {
   local name="$1" trust="$2"
   echo "Ensuring IAM role: ${name}"
@@ -77,7 +89,9 @@ if ! aws_local eks describe-cluster --name "${CLUSTER_NAME}" >/dev/null 2>&1; th
     --resources-vpc-config "{\"subnetIds\":[\"${SUBNET_A}\",\"${SUBNET_B}\"]}" >/dev/null
 fi
 echo "Waiting for EKS cluster: ${CLUSTER_NAME}"
-aws_local eks wait cluster-active --name "${CLUSTER_NAME}"
+if ! aws_local eks wait cluster-active --name "${CLUSTER_NAME}"; then
+  diagnose_eks_failure "EKS cluster did not become ACTIVE"
+fi
 
 if ! aws_local eks describe-nodegroup --cluster-name "${CLUSTER_NAME}" --nodegroup-name workers >/dev/null 2>&1; then
   echo "Creating EKS node group: workers"
@@ -86,7 +100,9 @@ if ! aws_local eks describe-nodegroup --cluster-name "${CLUSTER_NAME}" --nodegro
     --subnets "${SUBNET_A}" "${SUBNET_B}" --scaling-config desiredSize=1 >/dev/null
 fi
 echo "Waiting for EKS node group: workers"
-aws_local eks wait nodegroup-active --cluster-name "${CLUSTER_NAME}" --nodegroup-name workers
+if ! aws_local eks wait nodegroup-active --cluster-name "${CLUSTER_NAME}" --nodegroup-name workers; then
+  diagnose_eks_failure "EKS node group did not become ACTIVE"
+fi
 
 echo "Creating EKS Pod Identity association"
 aws_local eks create-pod-identity-association --cluster-name "${CLUSTER_NAME}" \
