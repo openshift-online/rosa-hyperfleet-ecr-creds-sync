@@ -3,6 +3,7 @@
 localstack: localstack-up
 
 localstack-up:
+	@if [ "$(notdir $(CONTAINER_ENGINE))" = "podman" ]; then systemctl --user enable --now podman.socket 2>/dev/null || true; fi
 	LOCALSTACK_PORT=$(LOCALSTACK_PORT) CONTAINER_ENGINE=$(CONTAINER_ENGINE) ./hack/start-localstack.sh
 
 localstack-down:

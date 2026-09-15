@@ -14,6 +14,10 @@ if [[ -z "${CONTAINER_ENGINE}" ]]; then
   exit 1
 fi
 
+if [[ "${ENGINE_NAME}" == "podman" ]]; then
+  systemctl --user enable --now podman.socket 2>/dev/null || true
+fi
+
 if [[ -z "${LOCALSTACK_AUTH_TOKEN:-}" ]]; then
   echo "ERROR: LOCALSTACK_AUTH_TOKEN is required for LocalStack 2026.08.0" >&2
   exit 1
@@ -35,6 +39,7 @@ if [[ "${ENGINE_NAME}" == "podman" ]]; then
   fi
   SOCKET_ARGS=(
     -v "${PODMAN_SOCKET}:/var/run/docker.sock:Z"
+    -e "DOCKER_CMD=podman"
     -e "DOCKER_HOST=unix:///var/run/docker.sock"
     -e "DOCKER_SOCK=/var/run/docker.sock"
   )
@@ -63,7 +68,8 @@ seed_ecr() {
 
 if "${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{.State.Status}}' 2>/dev/null | grep -q '^running$'; then
   CURRENT_SERVICES="$("${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{index .Config.Labels "ecr-creds-sync.services"}}' 2>/dev/null || true)"
-  if [[ "${CURRENT_SERVICES}" == "${SERVICES}" ]]; then
+  CURRENT_RUNTIME="$("${CONTAINER_ENGINE}" inspect "${CONTAINER_NAME}" --format '{{index .Config.Labels "ecr-creds-sync.runtime"}}' 2>/dev/null || true)"
+  if [[ "${CURRENT_SERVICES}" == "${SERVICES}" && "${CURRENT_RUNTIME}" == "${ENGINE_NAME}" ]]; then
     echo "LocalStack container '${CONTAINER_NAME}' already running on port ${PORT}."
     wait_healthy
     seed_ecr
@@ -78,6 +84,7 @@ echo "Starting ${IMAGE} on 127.0.0.1:${PORT} ..."
 "${CONTAINER_ENGINE}" run -d \
   --name "${CONTAINER_NAME}" \
   --label "ecr-creds-sync.services=${SERVICES}" \
+  --label "ecr-creds-sync.runtime=${ENGINE_NAME}" \
   -p "127.0.0.1:${PORT}:4566" \
   "${SOCKET_ARGS[@]}" \
   "${NETWORK_ARGS[@]}" \
