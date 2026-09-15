@@ -52,8 +52,10 @@ echo "Starting ${IMAGE} on 127.0.0.1:${PORT} ..."
 "${CONTAINER_ENGINE}" run -d \
   --name "${CONTAINER_NAME}" \
   -p "127.0.0.1:${PORT}:4566" \
+  -v /var/run/docker.sock:/var/run/docker.sock \
   -e "SERVICES=ecr,eks,eks-auth,iam,sts" \
   -e "AWS_DEFAULT_REGION=${AWS_REGION:-us-east-1}" \
+  -e "LOCALSTACK_HOST=localhost.localstack.cloud" \
   -e "DEBUG=${LOCALSTACK_DEBUG:-0}" \
   "${AUTH_ARGS[@]}" \
   "${IMAGE}"

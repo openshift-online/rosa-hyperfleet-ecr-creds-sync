@@ -22,3 +22,4 @@ vendor/
 # Local build context and generated files
 *.log
 dist/
+.local/

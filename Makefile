@@ -1,4 +1,4 @@
-.PHONY: localstack localstack-up localstack-down localstack-logs localstack-test test build
+.PHONY: localstack localstack-up localstack-down localstack-logs localstack-test e2e-localstack-eks test build
 
 localstack: localstack-up
 
@@ -13,6 +13,9 @@ localstack-logs:
 
 localstack-test: localstack-up
 	LOCALSTACK_INTEGRATION=1 LOCALSTACK_ENDPOINT=http://127.0.0.1:$(LOCALSTACK_PORT) go test ./internal/controller -run LocalStack
+
+e2e-localstack-eks:
+	./hack/e2e-localstack-eks.sh
 
 test:
 	go test ./...
