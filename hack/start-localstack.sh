@@ -6,6 +6,7 @@ CONTAINER_NAME="ecr-creds-sync-localstack"
 PORT="${LOCALSTACK_PORT:-4566}"
 HEALTH_URL="http://127.0.0.1:${PORT}/_localstack/health"
 HEALTH_TIMEOUT="${LOCALSTACK_HEALTH_TIMEOUT:-60}"
+ENGINE_NAME="$(basename "${CONTAINER_ENGINE}")"
 
 if [[ -z "${CONTAINER_ENGINE}" ]]; then
   echo "ERROR: podman or docker is required" >&2
@@ -18,6 +19,26 @@ if [[ -z "${LOCALSTACK_AUTH_TOKEN:-}" ]]; then
 fi
 IMAGE="localstack/localstack:2026.08.0"
 AUTH_ARGS=(-e "LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN}")
+
+SOCKET_ARGS=(
+  -v /var/run/docker.sock:/var/run/docker.sock
+  -e DOCKER_HOST=unix:///var/run/docker.sock
+  -e DOCKER_SOCK=/var/run/docker.sock
+)
+NETWORK_ARGS=()
+if [[ "${ENGINE_NAME}" == "podman" ]]; then
+  PODMAN_SOCKET="${DOCKER_SOCK:-${XDG_RUNTIME_DIR:-}/podman/podman.sock}"
+  if [[ ! -S "${PODMAN_SOCKET}" ]]; then
+    echo "ERROR: Podman socket not found at ${PODMAN_SOCKET}; start podman.socket first" >&2
+    exit 1
+  fi
+  SOCKET_ARGS=(
+    -v "${PODMAN_SOCKET}:/var/run/docker.sock:Z"
+    -e "DOCKER_HOST=unix:///var/run/docker.sock"
+    -e "DOCKER_SOCK=/var/run/docker.sock"
+  )
+  NETWORK_ARGS=(--network podman)
+fi
 
 wait_healthy() {
   echo "Waiting for LocalStack at ${HEALTH_URL} ..."
@@ -52,7 +73,10 @@ echo "Starting ${IMAGE} on 127.0.0.1:${PORT} ..."
 "${CONTAINER_ENGINE}" run -d \
   --name "${CONTAINER_NAME}" \
   -p "127.0.0.1:${PORT}:4566" \
-  -v /var/run/docker.sock:/var/run/docker.sock \
+  "${SOCKET_ARGS[@]}" \
+  "${NETWORK_ARGS[@]}" \
+  --user 0 \
+  --privileged \
   -e "SERVICES=ecr,eks,eks-auth,iam,sts" \
   -e "AWS_DEFAULT_REGION=${AWS_REGION:-us-east-1}" \
   -e "LOCALSTACK_HOST=localhost.localstack.cloud" \
