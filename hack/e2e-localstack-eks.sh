@@ -149,6 +149,27 @@ spec:
     name: ecr-pull-secret
   release:
     image: quay.io/openshift-release-dev/ocp-release:latest
+  services:
+  - service: APIServer
+    servicePublishingStrategy:
+      nodePort:
+        address: localhost
+      type: NodePort
+  - service: Ignition
+    servicePublishingStrategy:
+      nodePort:
+        address: localhost
+      type: NodePort
+  - service: Konnectivity
+    servicePublishingStrategy:
+      nodePort:
+        address: localhost
+      type: NodePort
+  - service: OAuthServer
+    servicePublishingStrategy:
+      nodePort:
+        address: localhost
+      type: NodePort
 EOF
 
 for _ in $(seq 1 60); do
