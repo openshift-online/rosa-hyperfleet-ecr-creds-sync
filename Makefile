@@ -1,3 +1,6 @@
+include .env
+export
+
 .PHONY: localstack localstack-up localstack-down localstack-logs localstack-ecr-test localstack-test e2e-localstack-eks test build
 
 localstack: localstack-up

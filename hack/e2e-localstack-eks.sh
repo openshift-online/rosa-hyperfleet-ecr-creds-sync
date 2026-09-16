@@ -19,7 +19,7 @@ IMAGE="${REGISTRY}/ecr-creds-sync:${IMAGE_TAG}"
 HYPERSHIFT_DIR="${HYPERSHIFT_DIR:-${ROOT_DIR}/../hypershift}"
 CONTAINER_ENGINE="${CONTAINER_ENGINE:-$(command -v podman 2>/dev/null || command -v docker 2>/dev/null)}"
 AWS_TIMEOUT="${AWS_TIMEOUT:-120}"
-POD_IDENTITY_AGENT_IMAGE="${POD_IDENTITY_AGENT_IMAGE:-602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/eks-pod-identity-agent:v0.1.20}"
+POD_IDENTITY_AGENT_IMAGE="${POD_IDENTITY_AGENT_IMAGE:-public.ecr.aws/eks/eks-pod-identity-agent:0.2.2}"
 if [[ -z "${EKS_AUTH_ENDPOINT:-}" ]]; then
   if [[ "$(basename "${CONTAINER_ENGINE}")" == "podman" ]]; then
     EKS_AUTH_ENDPOINT="http://host.containers.internal:4566"
