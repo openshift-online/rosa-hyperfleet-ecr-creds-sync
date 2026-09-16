@@ -112,7 +112,9 @@ aws_local ecr get-login-password | "${CONTAINER_ENGINE}" login --username AWS --
 
 kubectl create namespace hypershift --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f "${ROOT_DIR}/config/rbac.yaml"
-kubectl apply -f "${HYPERSHIFT_DIR}/api/hypershift/v1beta1/zz_generated.featuregated-crd-manifests/hostedclusters.hypershift.openshift.io/AAA_ungated.yaml"
+sed '/^[[:space:]]*feature-gate\.release\.openshift\.io\/:/d' \
+  "${HYPERSHIFT_DIR}/api/hypershift/v1beta1/zz_generated.featuregated-crd-manifests/hostedclusters.hypershift.openshift.io/AAA_ungated.yaml" \
+  | kubectl apply --server-side -f -
 kubectl apply -f "${ROOT_DIR}/config/deployment.yaml"
 kubectl -n hypershift set image deployment/ecr-creds-sync controller="${IMAGE}"
 kubectl -n hypershift set env deployment/ecr-creds-sync \
