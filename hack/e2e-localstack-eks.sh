@@ -19,6 +19,14 @@ IMAGE="${REGISTRY}/ecr-creds-sync:${IMAGE_TAG}"
 HYPERSHIFT_DIR="${HYPERSHIFT_DIR:-${ROOT_DIR}/../hypershift}"
 CONTAINER_ENGINE="${CONTAINER_ENGINE:-$(command -v podman 2>/dev/null || command -v docker 2>/dev/null)}"
 AWS_TIMEOUT="${AWS_TIMEOUT:-120}"
+POD_IDENTITY_AGENT_IMAGE="${POD_IDENTITY_AGENT_IMAGE:-602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/eks-pod-identity-agent:v0.1.20}"
+if [[ -z "${EKS_AUTH_ENDPOINT:-}" ]]; then
+  if [[ "$(basename "${CONTAINER_ENGINE}")" == "podman" ]]; then
+    EKS_AUTH_ENDPOINT="http://host.containers.internal:4566"
+  else
+    EKS_AUTH_ENDPOINT="http://host.docker.internal:4566"
+  fi
+fi
 
 if [[ -z "${CONTAINER_ENGINE}" ]]; then
   echo "ERROR: podman or docker is required" >&2
@@ -104,6 +112,16 @@ if command -v lstk >/dev/null 2>&1; then
 else
   aws_local eks update-kubeconfig --name "${CLUSTER_NAME}" >/dev/null
 fi
+
+echo "Deploying EKS Pod Identity agent"
+sed \
+  -e "s|__POD_IDENTITY_AGENT_IMAGE__|${POD_IDENTITY_AGENT_IMAGE}|g" \
+  -e "s|__EKS_CLUSTER_NAME__|${CLUSTER_NAME}|g" \
+  -e "s|__AWS_REGION__|${AWS_REGION}|g" \
+  -e "s|__EKS_AUTH_ENDPOINT__|${EKS_AUTH_ENDPOINT}|g" \
+  "${ROOT_DIR}/config/eks-pod-identity-agent.yaml" \
+  | kubectl apply -f -
+kubectl -n kube-system rollout status daemonset/eks-pod-identity-agent --timeout=180s
 
 aws_local ecr create-repository --repository-name ecr-creds-sync >/dev/null 2>&1 || true
 echo "Pushing controller image to LocalStack ECR"

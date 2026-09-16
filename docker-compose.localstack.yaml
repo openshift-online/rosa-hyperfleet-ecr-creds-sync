@@ -5,8 +5,8 @@ services:
     user: "0"
     privileged: true
     ports:
-      - "127.0.0.1:4566:4566"
-      - "127.0.0.1:4510-4559:4510-4559"
+      - "${LOCALSTACK_BIND_ADDRESS:-0.0.0.0}:4566:4566"
+      - "${LOCALSTACK_BIND_ADDRESS:-0.0.0.0}:4510-4559:4510-4559"
     environment:
       SERVICES: ecr,ec2,eks,eks-auth,iam,sts
       DEBUG: "${LOCALSTACK_DEBUG:-0}"
@@ -15,7 +15,7 @@ services:
       DOCKER_HOST: unix:///var/run/docker.sock
       DOCKER_SOCK: "${DOCKER_SOCK:?Set DOCKER_SOCK to the container-engine socket}"
     volumes:
-      - "${DOCKER_SOCK}:/var/run/docker.sock:Z"
+      - "/run/podman/podman.sock:/var/run/docker.sock:Z"
     networks:
       - localstack-net
 

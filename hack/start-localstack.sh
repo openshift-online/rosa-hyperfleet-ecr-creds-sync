@@ -17,7 +17,7 @@ fi
 
 if [[ "${ENGINE_NAME}" == "podman" ]]; then
   systemctl --user enable --now podman.socket 2>/dev/null || true
-  export DOCKER_SOCK="${DOCKER_SOCK:-${XDG_RUNTIME_DIR}/podman/podman.sock}"
+  export DOCKER_SOCK="${DOCKER_SOCK:-/run/podman/podman.sock}"
 fi
 
 if [[ -z "${LOCALSTACK_AUTH_TOKEN:-}" ]]; then
@@ -34,7 +34,7 @@ SOCKET_ARGS=(
 )
 NETWORK_ARGS=()
 if [[ "${ENGINE_NAME}" == "podman" ]]; then
-  PODMAN_SOCKET="${DOCKER_SOCK:-${XDG_RUNTIME_DIR:-}/podman/podman.sock}"
+  PODMAN_SOCKET="${DOCKER_SOCK:-/run/podman/podman.sock}"
   if [[ ! -S "${PODMAN_SOCKET}" ]]; then
     echo "ERROR: Podman socket not found at ${PODMAN_SOCKET}; start podman.socket first" >&2
     exit 1
@@ -106,6 +106,7 @@ echo "Starting ${IMAGE} on 127.0.0.1:${PORT} ..."
   --label "ecr-creds-sync.runtime=${ENGINE_NAME}" \
   --label "ecr-creds-sync.config=${CONFIG_VERSION}" \
   -p "127.0.0.1:${PORT}:4566" \
+  -p "127.0.0.1:4510-4559:4510-4559" \
   "${SOCKET_ARGS[@]}" \
   "${NETWORK_ARGS[@]}" \
   --user 0 \

@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: eks-pod-identity-agent
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: eks-pod-identity-agent
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: eks-pod-identity-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: eks-pod-identity-agent
+    spec:
+      automountServiceAccountToken: true
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      terminationGracePeriodSeconds: 30
+      tolerations:
+      - operator: Exists
+      initContainers:
+      - name: eks-pod-identity-agent-init
+        image: __POD_IDENTITY_AGENT_IMAGE__
+        imagePullPolicy: IfNotPresent
+        command: ['/go-runner', '/eks-pod-identity-agent', 'initialize']
+        securityContext:
+          privileged: true
+      containers:
+      - name: eks-pod-identity-agent
+        image: __POD_IDENTITY_AGENT_IMAGE__
+        imagePullPolicy: IfNotPresent
+        command: ['/go-runner', '/eks-pod-identity-agent', 'server']
+        args:
+        - --port
+        - "80"
+        - --cluster-name
+        - __EKS_CLUSTER_NAME__
+        - --probe-port
+        - "2703"
+        env:
+        - name: AWS_REGION
+          value: __AWS_REGION__
+        - name: AWS_ENDPOINT_URL_EKS_AUTH
+          value: __EKS_AUTH_ENDPOINT__
+        - name: AWS_ACCESS_KEY_ID
+          value: test
+        - name: AWS_SECRET_ACCESS_KEY
+          value: test
+        - name: AWS_EC2_METADATA_DISABLED
+          value: "true"
+        ports:
+        - name: probes
+          containerPort: 2703
+        securityContext:
+          capabilities:
+            add:
+            - CAP_NET_BIND_SERVICE
+        readinessProbe:
+          httpGet:
+            host: localhost
+            path: /readyz
+            port: probes
+          initialDelaySeconds: 1
+          timeoutSeconds: 10
+        livenessProbe:
+          httpGet:
+            host: localhost
+            path: /healthz
+            port: probes
+          initialDelaySeconds: 30
+          timeoutSeconds: 10
