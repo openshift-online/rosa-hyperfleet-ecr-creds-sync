@@ -12,6 +12,7 @@ coverage.html
 
 # Go tooling
 vendor/
+hack/tools/bin/
 
 # Editors and operating-system files
 .DS_Store
