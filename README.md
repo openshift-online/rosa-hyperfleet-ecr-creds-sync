@@ -44,8 +44,9 @@ For every `HostedCluster`, it reads `spec.pullSecret.name` and writes a Kubernet
 - `--ecr-repository` or `ECR_REPOSITORY`: ECR repository URI, including its path.
 - `--aws-region` or `AWS_REGION`: AWS region. If omitted, the AWS SDK configuration is used.
 - `--aws-endpoint-url` or `AWS_ENDPOINT_URL`: optional endpoint override for LocalStack and other AWS emulators; leave unset in production.
+- `--refresh-after` or `REFRESH_AFTER`: duration between ECR authorization token refreshes. Defaults to `2h`.
 
-The controller refreshes credentials every 10 hours. ECR authorization tokens are valid for 12 hours.
+The controller refreshes credentials every 2 hours by default. ECR authorization tokens are valid for 12 hours.
 
 ## Pod identity
 

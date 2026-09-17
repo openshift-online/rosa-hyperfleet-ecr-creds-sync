@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"time"
 
@@ -18,14 +19,41 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
+const defaultRefreshAfter = 2 * time.Hour
+
+func refreshAfterFromEnv(value string) (time.Duration, error) {
+	if value == "" {
+		return defaultRefreshAfter, nil
+	}
+	duration, err := time.ParseDuration(value)
+	if err != nil {
+		return 0, fmt.Errorf("parse REFRESH_AFTER: %w", err)
+	}
+	if duration <= 0 {
+		return 0, fmt.Errorf("REFRESH_AFTER must be greater than zero")
+	}
+	return duration, nil
+}
+
 func main() {
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: false})))
+
 	var repository, region, endpoint string
+	refreshAfter, err := refreshAfterFromEnv(os.Getenv("REFRESH_AFTER"))
+	if err != nil {
+		ctrl.Log.Error(err, "invalid refresh interval")
+		os.Exit(2)
+	}
 	flag.StringVar(&repository, "ecr-repository", os.Getenv("ECR_REPOSITORY"), "ECR repository URI, for example 123456789012.dkr.ecr.us-east-1.amazonaws.com/rosa/release")
 	flag.StringVar(&region, "aws-region", os.Getenv("AWS_REGION"), "AWS region; when empty, use the AWS SDK region configuration")
 	flag.StringVar(&endpoint, "aws-endpoint-url", os.Getenv("AWS_ENDPOINT_URL"), "optional AWS endpoint override for local emulators such as LocalStack")
+	flag.DurationVar(&refreshAfter, "refresh-after", refreshAfter, "time between ECR authorization token refreshes")
 	flag.Parse()
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zap.Options{Development: false})))
+	if refreshAfter <= 0 {
+		ctrl.Log.Error(nil, "refresh interval must be greater than zero")
+		os.Exit(2)
+	}
 	if repository == "" {
 		ctrl.Log.Error(nil, "ecr-repository is required")
 		os.Exit(2)
@@ -58,7 +86,7 @@ func main() {
 		Client:       mgr.GetClient(),
 		ECR:          ecr.NewFromConfig(awsConfig),
 		Repository:   repository,
-		RefreshAfter: 10 * time.Hour,
+		RefreshAfter: refreshAfter,
 	}
 	if err := r.SetupWithManager(mgr, crcontroller.Options{MaxConcurrentReconciles: 4}); err != nil {
 		ctrl.Log.Error(err, "unable to create controller")
