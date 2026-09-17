@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -35,6 +36,10 @@ type Reconciler struct {
 	ECR          tokenClient
 	Repository   string
 	RefreshAfter time.Duration
+
+	authorizationMu        sync.Mutex
+	authorizationData      types.AuthorizationData
+	authorizationFetchedAt time.Time
 }
 
 func (r *Reconciler) SetupWithManager(mgr manager.Manager, options controller.Options) error {
@@ -81,6 +86,24 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 }
 
 func (r *Reconciler) authorization(ctx context.Context, registry string) (types.AuthorizationData, error) {
+	r.authorizationMu.Lock()
+	defer r.authorizationMu.Unlock()
+
+	now := time.Now()
+	if !r.authorizationFetchedAt.IsZero() && now.Before(r.authorizationFetchedAt.Add(r.RefreshAfter)) {
+		return r.authorizationData, nil
+	}
+
+	auth, err := r.fetchAuthorization(ctx, registry)
+	if err != nil {
+		return types.AuthorizationData{}, err
+	}
+	r.authorizationData = auth
+	r.authorizationFetchedAt = now
+	return auth, nil
+}
+
+func (r *Reconciler) fetchAuthorization(ctx context.Context, registry string) (types.AuthorizationData, error) {
 	input := &ecr.GetAuthorizationTokenInput{}
 	if account := accountFromRegistry(registry); account != "" {
 		input.RegistryIds = []string{account}

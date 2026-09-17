@@ -46,7 +46,7 @@ For every `HostedCluster`, it reads `spec.pullSecret.name` and writes a Kubernet
 - `--aws-endpoint-url` or `AWS_ENDPOINT_URL`: optional endpoint override for LocalStack and other AWS emulators; leave unset in production.
 - `--refresh-after` or `REFRESH_AFTER`: duration between ECR authorization token refreshes. Defaults to `2h`.
 
-The controller refreshes credentials every 2 hours by default. ECR authorization tokens are valid for 12 hours.
+The controller mints one ECR authorization token and keeps it in memory for all HostedClusters managed by the process. New HostedClusters reuse that token. After the refresh interval, the first reconciliation mints a replacement and subsequent reconciliations reuse it. The default refresh interval is 2 hours, while ECR authorization tokens are valid for 12 hours. A process restart clears the in-memory token and causes a new token to be minted on the first reconciliation.
 
 ## Pod identity
 
